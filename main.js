@@ -190,9 +190,9 @@ function stringifyUpdatesJSON (updatesJSON) {
 async function updateReadme (version, xpiFilepath) {
     let content = await readFile(FILEPATH_README);
     let badges = README_BADGE_TEXT
-                .replace("{URL_UPDATES}", URL_UPDATES)
-                .replace("{XPI_FILEPATH}", xpiFilepath)
-                .replace("{VERSION}", version);
+                .replace(/{URL_UPDATES}/g, URL_UPDATES)
+                .replace(/{XPI_FILEPATH}/g, xpiFilepath)
+                .replace(/{VERSION}/g, version);
     content = content.split(README_BADGE_INSERT_START)[0]
             + README_BADGE_INSERT_START
             + "\n" + badges + "\n"
