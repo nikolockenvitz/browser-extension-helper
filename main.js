@@ -28,11 +28,15 @@ let URL_UPDATES     = `https://nikolockenvitz.github.io/${REPOSITORY_NAME}`;
 let AMO_URL;
 let ZIP_CONTENT;
 let README_BADGE_TEXT;
+let ZIP_FOLDERNAME;
+let ZIP_FILENAME_INCLUDE_VERSION;
 
 exports.init = function (options) {
     AMO_URL = options.amoURL;
     ZIP_CONTENT = options.zipContent;
     README_BADGE_TEXT = options.readmeBadgeText;
+    ZIP_FOLDERNAME = options.zipFoldername || ".";
+    ZIP_FILENAME_INCLUDE_VERSION = options.zipFilenameIncludeVersion;
 };
 
 exports.main = async function (argv) {
@@ -61,16 +65,18 @@ function logListOfCommands () {
 
 async function buildAddon () {
     // creates a .zip to be uploaded to AMO
-    const zipFilename = getZipFilename();
+    const version = await getVersion();
+    const zipFilename = getZipFilename(version);
 
     await deletePreviousZipFile(zipFilename);
     await createZip(zipFilename);
 
-    logSuccess(`created ${zipFilename}`);
+    logSuccess(`created ${path.join(ZIP_FOLDERNAME, zipFilename)}`);
 }
 
-function getZipFilename () {
-    return `${REPOSITORY_NAME}.zip`;
+function getZipFilename (version="") {
+    if (!ZIP_FILENAME_INCLUDE_VERSION) version = "";
+    return `${REPOSITORY_NAME}${version ? "-" + version : ""}.zip`;
 }
 
 async function deletePreviousZipFile (zipFilename) {
@@ -88,7 +94,8 @@ async function createZip (zipFilename) {
         const filepath = path.dirname(file);
         zip.addLocalFile(file, filepath !== "." ? filepath : undefined);
     }
-    zip.writeZip(zipFilename);
+    try { await executeCommand(`mkdir ${ZIP_FOLDERNAME}`); } catch {}
+    zip.writeZip(path.join(ZIP_FOLDERNAME, zipFilename));
 }
 
 function openAMOAddonUpload () {
