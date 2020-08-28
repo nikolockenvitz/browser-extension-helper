@@ -14,6 +14,7 @@ const LIST_OF_COMMANDS = `
 npm run help           logs this help
 npm run build          zips all files into {ZIP_FILENAME}
 npm run build -- amo   + opens the AMO page to upload a new version for this addon
+npm run build -- beta  + adds ' [beta]' to the addons name in the zips manifest
 npm run deploy         adds xpi to updates.json and README.md + deletes previous versions
 `;
 
@@ -46,7 +47,7 @@ exports.main = async function (argv) {
             logListOfCommands();
             break;
         case "build":
-            await buildAddon();
+            await buildAddon(options.includes("beta"));
             if (options.includes("amo")) {
                 openAMOAddonUpload();
             }
@@ -63,20 +64,40 @@ function logListOfCommands () {
 }
 
 
-async function buildAddon () {
+async function buildAddon (beta=false) {
     // creates a .zip to be uploaded to AMO
-    const version = await getVersion();
-    const zipFilename = getZipFilename(version);
+    const manifest = await getManifest();
+    const version = manifest.version;
+    const zipFilename = getZipFilename(version, beta);
+
+    if (beta) {
+        manifest.name += " [beta]";
+        await saveManifest(manifest);
+    }
 
     await deletePreviousZipFile(zipFilename);
     await createZip(zipFilename);
 
+    if (beta) {
+        manifest.name = manifest.name.replace(/ \[beta\]$/, "");
+        await saveManifest(manifest);
+    }
+
     logSuccess(`created ${path.join(ZIP_FOLDERNAME, zipFilename)}`);
 }
 
-function getZipFilename (version="") {
+async function getManifest () {
+    const manifest = await readFile(FILEPATH_MANIFEST);
+    return JSON.parse(manifest);
+}
+
+async function saveManifest (manifest) {
+    return await writeFile(FILEPATH_MANIFEST, JSON.stringify(manifest, null, 2));
+}
+
+function getZipFilename (version="", beta=false) {
     if (!ZIP_FILENAME_INCLUDE_VERSION) version = "";
-    return `${REPOSITORY_NAME}${version ? "-" + version : ""}.zip`;
+    return `${REPOSITORY_NAME}${version ? "-" + version : ""}${beta ? "-beta" : ""}.zip`;
 }
 
 async function deletePreviousZipFile (zipFilename) {
@@ -107,7 +128,7 @@ function openAMOAddonUpload () {
 
 async function deployAddon () {
     // adds new addon version to updates.json and README.md + removes previous
-    const version = await getVersion();
+    const version = (await getManifest()).version;
     const xpiFilepath = await getFilepathOfXPI(version);
     if (!xpiFilepath) {
         logError(`You need to download the .xpi of v${version} before you can run this deploy script`);
@@ -119,11 +140,6 @@ async function deployAddon () {
     await updateReadme(version, xpiFilepath);
 
     logSuccess(`added ${xpiFilepath} to ${FILEPATH_UPDATES} and ${FILEPATH_README}`);
-}
-
-async function getVersion () {
-    const manifest = await readFile(FILEPATH_MANIFEST);
-    return JSON.parse(manifest).version;
 }
 
 async function getFilepathOfXPI (version) {
