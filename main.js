@@ -72,6 +72,9 @@ async function buildAddon (beta=false) {
 
     if (beta) {
         manifest.name += " [beta]";
+        if (manifest.browser_action && manifest.browser_action.default_title) {
+            manifest.browser_action.default_title += " [beta]";
+        }
         await saveManifest(manifest);
     }
 
@@ -80,6 +83,9 @@ async function buildAddon (beta=false) {
 
     if (beta) {
         manifest.name = manifest.name.replace(/ \[beta\]$/, "");
+        if (manifest.browser_action && manifest.browser_action.default_title) {
+            manifest.browser_action.default_title = manifest.browser_action.default_title.replace(/ \[beta\]$/, "");
+        }
         await saveManifest(manifest);
     }
 
