@@ -27,6 +27,7 @@ const FILEPATH_README    = "README.md";
 let REPOSITORY_NAME = path.basename(process.cwd());
 let URL_UPDATES     = `https://nikolockenvitz.github.io/${REPOSITORY_NAME}`;
 let AMO_URL;
+let AMO_URL_BETA;
 let ZIP_CONTENT;
 let README_BADGE_TEXT;
 let ZIP_FOLDERNAME;
@@ -34,6 +35,7 @@ let ZIP_FILENAME_INCLUDE_VERSION;
 
 exports.init = function (options) {
     AMO_URL = options.amoURL;
+    AMO_URL_BETA = options.amoURLbeta;
     ZIP_CONTENT = options.zipContent;
     README_BADGE_TEXT = options.readmeBadgeText;
     ZIP_FOLDERNAME = options.zipFoldername || ".";
@@ -47,9 +49,10 @@ exports.main = async function (argv) {
             logListOfCommands();
             break;
         case "build":
-            await buildAddon(options.includes("beta"));
+            const isBeta = options.includes("beta");
+            await buildAddon(isBeta);
             if (options.includes("amo")) {
-                openAMOAddonUpload();
+                openAMOAddonUpload(isBeta);
             }
             break;
         case "deploy":
@@ -125,8 +128,10 @@ async function createZip (zipFilename) {
     zip.writeZip(path.join(ZIP_FOLDERNAME, zipFilename));
 }
 
-function openAMOAddonUpload () {
-    if (AMO_URL) {
+function openAMOAddonUpload (beta=false) {
+    if (beta && AMO_URL_BETA) {
+        executeCommand(`start ${AMO_URL_BETA}`);
+    } else if (AMO_URL) {
         executeCommand(`start ${AMO_URL}`);
     }
 }
