@@ -2,6 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const exec = require("child_process").exec;
 const AdmZip = require("adm-zip");
+const os = require('os');
+const osPlatform = os.platform();
 
 const README_BADGE_INSERT_START = "<!-- SHIELD IO BADGES INSTALL START -->";
 const README_BADGE_INSERT_END   = "<!-- SHIELD IO BADGES INSTALL END -->";
@@ -128,11 +130,16 @@ async function createZip (zipFilename) {
     zip.writeZip(path.join(ZIP_FOLDERNAME, zipFilename));
 }
 
-function openAMOAddonUpload (beta=false) {
-    if (beta && AMO_URL_BETA) {
-        executeCommand(`start ${AMO_URL_BETA}`);
-    } else if (AMO_URL) {
-        executeCommand(`start ${AMO_URL}`);
+async function openAMOAddonUpload (beta=false) {
+    const cmd = osPlatform === "linux" ? "firefox" : "start";
+    try {
+        if (beta && AMO_URL_BETA) {
+            await executeCommand(`${cmd} ${AMO_URL_BETA}`);
+        } else if (AMO_URL) {
+            await executeCommand(`${cmd} ${AMO_URL}`);
+        }
+    } catch (err) {
+        console.error("Error when opening AMO url", err);
     }
 }
 
@@ -154,7 +161,8 @@ async function deployAddon () {
 }
 
 async function getFilepathOfXPI (version) {
-    const directoryContent = await executeCommand(`dir ${DIRECTORY_NAME_XPI}`);
+    const cmd = osPlatform === "linux" ? "ls" : "dir";
+    const directoryContent = await executeCommand(`${cmd} ${DIRECTORY_NAME_XPI}`);
     for (let line of directoryContent.split("\n")) {
         if (line.includes(version) && line.includes(".xpi")) {
             const filename = line.split(" ").pop().trim();
@@ -164,9 +172,15 @@ async function getFilepathOfXPI (version) {
 }
 
 async function getFileHash (filepath) {
-    const cmdHashResult = await executeCommand(`certUtil -hashFile ${filepath} sha256`);
-    const hash = cmdHashResult.split("\n")[1].trim();
-    return hash;
+    if (osPlatform === "linux") {
+        const cmdHashResult = await executeCommand(`sha256sum ${filepath}`);
+        const hash = cmdHashResult.split(" ")[0];
+        return hash;
+    } else {
+        const cmdHashResult = await executeCommand(`certUtil -hashFile ${filepath} sha256`);
+        const hash = cmdHashResult.split("\n")[1].trim();
+        return hash;
+    }
 }
 
 async function updateUpdatesJSON (version, xpiFilepath, xpiFileHash) {
