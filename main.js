@@ -268,6 +268,7 @@ function stringifyUpdatesJSON(updatesJSON) {
 
 async function updateReadme(version, xpiFilepath) {
     let content = await readFile(FILEPATH_README);
+    const oldVersion = getOldVersionNumberFromReadme(content);
     let badges = README_BADGE_TEXT.replace(/{URL_UPDATES}/g, URL_UPDATES)
         .replace(/{XPI_FILEPATH}/g, xpiFilepath)
         .replace(/{VERSION}/g, version);
@@ -279,7 +280,25 @@ async function updateReadme(version, xpiFilepath) {
         "\n" +
         README_BADGE_INSERT_END +
         content.split(README_BADGE_INSERT_END)[1];
+    if (oldVersion) {
+        content = content.replace(
+            new RegExp(`https://img.shields.io/badge/([a-z]+)-v${oldVersion.replace(/\./g, "\\.")}-`, "g"),
+            `https://img.shields.io/badge/$1-v${version}-`
+        );
+    }
     await writeFile(FILEPATH_README, content);
+}
+
+function getOldVersionNumberFromReadme(readmeContent) {
+    const regexOldVersion = README_BADGE_TEXT.replace(/\</g, "\\<")
+        .replace(/\>/g, "\\>")
+        .replace(/\?/g, "\\?")
+        .replace(/\./g, "\\.")
+        .replace(/{URL_UPDATES}/g, ".*")
+        .replace(/{XPI_FILEPATH}/g, ".*")
+        .replace(/{VERSION}/g, "(?<version>.*)");
+    const oldVersion = readmeContent.match(new RegExp(regexOldVersion))?.groups?.version;
+    return oldVersion;
 }
 
 async function readFile(filepath) {
